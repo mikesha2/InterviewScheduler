@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #c8f564;
+    --accent2: #64c8f5;
+    --text: #e8e8e8;
+    --muted: #666;
+    --danger: #f56464;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(200, 245, 100, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 10% 90%, rgba(100, 200, 245, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    margin-bottom: 3rem;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .card:nth-child(2) { animation-delay: 0.1s; }
+  .card:nth-child(3) { animation-delay: 0.2s; }
+
+  .card-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .card-hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    padding: 1rem;
+    resize: vertical;
+    min-height: 180px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  button {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border: none;
+    border-radius: 2px;
+    padding: 0.6rem 1.4rem;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0e0e0e;
+    font-weight: 500;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #d8ff7a;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .status {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .status.loading { color: var(--accent2); }
+  .status.error { color: var(--danger); }
+
+  #results {
+    display: none;
+  }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .result-grid { grid-template-columns: 1fr; }
+  }
+
+  .result-section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .assignment-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .assignment-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 2px 2px 0;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .assignment-item .person {
+    font-weight: 500;
+    color: var(--text);
+    min-width: 2rem;
+  }
+
+  .assignment-item .date {
+    color: var(--accent);
+    font-size: 0.75rem;
+  }
+
+  .unassigned-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .unassigned-tag {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.6rem;
+    background: var(--bg);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 2px;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .count-badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    background: rgba(200,245,100,0.12);
+    color: var(--accent);
+    border-radius: 20px;
+    border: 1px solid rgba(200,245,100,0.3);
+  }
+
+  .assignment-note {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(245, 196, 100, 0.35);
+    border-left: 2px solid #f5c464;
+    border-radius: 2px;
+    background: rgba(245, 196, 100, 0.08);
+    color: #f5d89a;
+    font-size: 0.74rem;
+    line-height: 1.5;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .pyodide-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.72rem;
+    color: var(--accent2);
+    margin-bottom: 1rem;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .dot-pulse {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .dot-pulse span {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 1s infinite ease-in-out;
+  }
+
+  .dot-pulse span:nth-child(2) { animation-delay: 0.15s; }
+  .dot-pulse span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  .file-drop {
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+    padding: 0.75rem 1rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0.75rem;
+  }
+
+  .file-drop:hover, .file-drop.drag-over {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(100,200,245,0.04);
+  }
+
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="label">// optimal matching</div>
+    <h1>Interview<br><span>Scheduler</span></h1>
+    <p class="subtitle">availability-based assignment</p>
+  </header>
+
+  <div id="pyodide-status" class="pyodide-loading">
+    <div class="dot-pulse"><span></span><span></span><span></span></div>
+    Loading Python runtime…
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Availability Data</span>
+      <span class="card-hint">CSV: name, date1, date2, …, priority optional, defaults to 1</span>
+    </div>
+
+    <label class="file-drop" id="drop-zone" for="csv-file">
+      ↑ drop a .csv file or click to upload
+    </label>
+    <input type="file" id="csv-file" accept=".csv,.txt">
+
+    <textarea id="csv-input" placeholder="A,1/23,1/28
+B,1/8,1/22,1/30
+C,1/7,1/9,1/12,1/13
+D,1/10
+E,1/8,1/9
+F,1/15
+G,1/9
+H,1/8,1/15"></textarea>
+
+    <div class="actions">
+      <button class="btn-primary" id="run-btn" disabled>Run Scheduler</button>
+      <button class="btn-secondary" id="clear-btn">Clear</button>
+      <button class="btn-secondary" id="sample-btn">Load Sample</button>
+      <span class="status" id="run-status"></span>
+    </div>
+  </div>
+
+  <div class="card" id="results">
+    <div class="card-header">
+      <span class="card-title">Results</span>
+      <span class="count-badge" id="assigned-count"></span>
+    </div>
+    <div class="assignment-note" id="duplicate-note" style="display:none"></div>
+    <div class="result-grid">
+      <div>
+        <div class="result-section-title">✦ Assigned</div>
+        <ul class="assignment-list" id="assignment-list"></ul>
+      </div>
+      <div id="unassigned-section" style="display:none">
+        <div class="result-section-title">✗ Unassigned</div>
+        <div class="unassigned-list" id="unassigned-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
+<script>
+const SAMPLE = `A,1/23,1/28
+B,1/8,1/22,1/30
+C,1/7,1/9,1/12,1/13
+D,1/10
+E,1/8,1/9
+F,1/15
+G,1/9
+H,1/8,1/15`;
+
+const PYTHON_CODE = `
+import json
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
+def parse_interview(row):
+    name = row[0].strip()
+    tokens = [value.strip() for value in row[1:] if value.strip()]
+    if len(tokens) >= 2:
+        try:
+            return name, set(tokens[:-1]), float(tokens[-1])
+        except ValueError:
+            pass
+    return name, set(tokens), 1
+
+def run_scheduler(csv_text):
+    lines = [l.strip() for l in csv_text.strip().split('\\n') if l.strip()]
+    parsed = [l.split(',') for l in lines]
+    interviews = [parse_interview(p) for p in parsed if len(p) >= 2 and p[0].strip()]
+
+    dates = sorted(set().union(*(i[1] for i in interviews)))
+    keys = [i[0] for i in interviews]
+    values = [i[1] for i in interviews]
+    priorities = [i[2] for i in interviews]
+
+    n = len(dates)
+    encode = lambda x, p: [p if dates[i] in x else 0 for i in range(n)]
+    matrix = np.array([encode(v, p) for v, p in zip(values, priorities)]).astype(np.float64)
+
+    row_ind, col_ind = linear_sum_assignment(-matrix)
+
+    assignments = []
+    for (i, j) in zip(row_ind, col_ind):
+        if matrix[i][j] > 0:
+            assignments.append({"person": keys[i], "date": dates[j]})
+
+    assigned_dates = {}
+    for assignment in assignments:
+        assigned_dates[assignment["date"]] = assigned_dates.get(assignment["date"], 0) + 1
+
+    duplicate_dates = [f"{date} ({count})" for date, count in assigned_dates.items() if count > 1]
+
+    row_ind_set = set(row_ind)
+    # Also unassigned = those assigned to a date they didn't want
+    assigned_happy = set(r for r, c in zip(row_ind, col_ind) if matrix[r][c] > 0)
+    unassigned = [keys[i] for i in range(len(keys)) if i not in assigned_happy]
+
+    return json.dumps({"assignments": assignments, "unassigned": unassigned, "duplicate_dates": duplicate_dates})
+`;
+
+let pyodide = null;
+const statusEl = document.getElementById('pyodide-status');
+const runBtn = document.getElementById('run-btn');
+const runStatus = document.getElementById('run-status');
+
+async function initPyodide() {
+  try {
+    pyodide = await loadPyodide();
+    await pyodide.loadPackage(['numpy', 'scipy']);
+    await pyodide.runPythonAsync(PYTHON_CODE);
+    statusEl.style.display = 'none';
+    runBtn.disabled = false;
+    runStatus.textContent = '✓ Python ready';
+    runStatus.className = 'status';
+    setTimeout(() => runStatus.textContent = '', 2000);
+  } catch (e) {
+    statusEl.innerHTML = '✗ Failed to load Python runtime';
+    statusEl.style.color = 'var(--danger)';
+  }
+}
+
+async function runScheduler() {
+  const csv = document.getElementById('csv-input').value.trim();
+  if (!csv) { runStatus.textContent = 'paste some CSV data first'; runStatus.className = 'status error'; return; }
+
+  runBtn.disabled = true;
+  runStatus.textContent = 'running…';
+  runStatus.className = 'status loading';
+
+  try {
+    const escaped = csv.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"');
+    const result = await pyodide.runPythonAsync(`run_scheduler("""${escaped}""")`);
+    const data = JSON.parse(result);
+    renderResults(data);
+    runStatus.textContent = '';
+  } catch (e) {
+    runStatus.textContent = 'error: ' + e.message;
+    runStatus.className = 'status error';
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+function renderResults({ assignments, unassigned, duplicate_dates = [] }) {
+  const resultsEl = document.getElementById('results');
+  const listEl = document.getElementById('assignment-list');
+  const unassignedEl = document.getElementById('unassigned-list');
+  const unassignedSection = document.getElementById('unassigned-section');
+  const countBadge = document.getElementById('assigned-count');
+  const duplicateNote = document.getElementById('duplicate-note');
+
+  listEl.innerHTML = '';
+  unassignedEl.innerHTML = '';
+  duplicateNote.style.display = 'none';
+
+  assignments.forEach((a, i) => {
+    const li = document.createElement('li');
+    li.className = 'assignment-item';
+    li.style.animationDelay = `${i * 0.04}s`;
+    li.innerHTML = `<span class="person">${a.person}</span><span class="date">→ ${a.date}</span>`;
+    listEl.appendChild(li);
+  });
+
+  countBadge.textContent = `${assignments.length} assigned`;
+
+  if (duplicate_dates.length > 0) {
+    duplicateNote.textContent = `Note: multiple interviews were assigned the same date: ${duplicate_dates.join(', ')}.`;
+    duplicateNote.style.display = 'block';
+  }
+
+  if (unassigned.length > 0) {
+    unassignedSection.style.display = '';
+    unassigned.forEach((name, i) => {
+      const tag = document.createElement('div');
+      tag.className = 'unassigned-tag';
+      tag.style.animationDelay = `${i * 0.06}s`;
+      tag.textContent = name;
+      unassignedEl.appendChild(tag);
+    });
+  } else {
+    unassignedSection.style.display = 'none';
+  }
+
+  resultsEl.style.display = 'block';
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// File upload
+document.getElementById('csv-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => document.getElementById('csv-input').value = ev.target.result;
+  reader.readAsText(file);
+});
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = ev => document.getElementById('csv-input').value = ev.target.result;
+    reader.readAsText(file);
+  }
+});
+
+document.getElementById('run-btn').addEventListener('click', runScheduler);
+document.getElementById('clear-btn').addEventListener('click', () => {
+  document.getElementById('csv-input').value = '';
+  document.getElementById('results').style.display = 'none';
+});
+document.getElementById('sample-btn').addEventListener('click', () => {
+  document.getElementById('csv-input').value = SAMPLE;
+});
+
+initPyodide();
+</script>
+</body>
+</html>
